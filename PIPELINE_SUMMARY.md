@@ -15,7 +15,7 @@ This GitHub Actions pipeline provides a complete CI/CD solution for the Currency
 
 ### **2. Testing**
 - **Framework**: pytest with coverage reporting
-- **Scope**: Unit tests across multiple Python versions (3.9, 3.10, 3.11)
+- **Scope**: Unit tests with comprehensive coverage
 - **Features**:
   - Runs comprehensive unit tests for all API endpoints
   - Generates coverage reports
