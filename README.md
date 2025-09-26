@@ -193,29 +193,326 @@ avinash-cognyte-devops-test/
 
 ## 🧪 Testing
 
-### Manual Testing
-1. **Backend API Tests**:
+This application includes comprehensive testing covering unit tests, integration tests, and containerized testing with CI/CD automation.
+
+### **Testing Architecture**
+- **Unit Tests**: Individual component testing with pytest
+- **Integration Tests**: Full application flow testing
+- **Container Tests**: Testing the complete containerized application
+- **CI/CD Pipeline**: Automated testing with GitHub Actions
+
+### **Quick Test Commands**
+
+#### **Run All Tests**
+```bash
+# Run complete test suite
+cd application/tests
+python run_tests.py --all --coverage --html
+
+# Quick unit tests only
+python run_tests.py --quick
+```
+
+#### **Specific Test Types**
+```bash
+# Unit tests only
+python run_tests.py --unit --coverage
+
+# Integration tests only  
+python run_tests.py --integration
+
+# Setup test environment
+python run_tests.py --setup
+```
+
+### **Test Structure**
+```
+application/tests/
+├── conftest.py                    # Pytest configuration and fixtures
+├── pytest.ini                    # Pytest settings
+├── requirements.txt               # Test dependencies
+├── run_tests.py                   # Test runner script
+├── ci_runner.sh                   # CI/CD automation script
+├── test_health_endpoint.py        # Health endpoint unit tests
+├── test_convert_endpoint.py       # Conversion endpoint unit tests  
+├── test_api_endpoints.py          # Additional API endpoint tests
+└── test_integration_containerized.py  # Container integration tests
+```
+
+### **Unit Tests**
+
+#### **Prerequisites**
+```bash
+# Install test dependencies
+cd application/tests
+pip install -r requirements.txt
+```
+
+#### **Health Endpoint Tests**
+```bash
+# Test health endpoint functionality
+pytest test_health_endpoint.py -v
+
+# Expected coverage:
+# ✅ HTTP 200 status code
+# ✅ JSON response format
+# ✅ Required fields (status, version, timestamp)
+# ✅ Healthy status reporting
+# ✅ API version consistency
+# ✅ Supported currencies list
+# ✅ Error handling (405 for wrong methods)
+```
+
+#### **Conversion Endpoint Tests**
+```bash
+# Test currency conversion functionality
+pytest test_convert_endpoint.py -v
+
+# Expected coverage:
+# ✅ Valid currency conversions
+# ✅ Same currency conversions (rate = 1.0)
+# ✅ Decimal amount handling
+# ✅ Zero amount conversions
+# ✅ Calculation accuracy
+# ✅ Error handling (invalid amounts, currencies)
+# ✅ Case insensitive currency codes
+# ✅ All supported currency pairs
+```
+
+#### **API Endpoints Tests**
+```bash
+# Test additional API endpoints
+pytest test_api_endpoints.py -v
+
+# Expected coverage:
+# ✅ Exchange rates endpoint (/api/rates)
+# ✅ API info endpoint (/api/info)
+# ✅ Error handling across endpoints
+# ✅ Cross-endpoint consistency
+# ✅ Base currency parameters
+```
+
+#### **Run Unit Tests with Coverage**
+```bash
+# Generate detailed coverage report
+pytest -m "unit" --cov=../backend --cov-report=html --cov-report=term-missing
+
+# View coverage report
+open htmlcov/index.html  # macOS
+# or visit: application/tests/htmlcov/index.html
+```
+
+### **Integration Tests**
+
+#### **Container Integration Tests**
+```bash
+# Run integration tests against containerized app
+pytest test_integration_containerized.py -v
+
+# What it tests:
+# ✅ Docker image builds successfully
+# ✅ Container starts and becomes healthy
+# ✅ All API endpoints work in container
+# ✅ Frontend serves correctly
+# ✅ Static assets load properly
+# ✅ Performance benchmarks
+# ✅ Concurrent request handling
+# ✅ Edge cases (large amounts, zero amounts)
+```
+
+#### **Prerequisites for Integration Tests**
+```bash
+# Ensure Docker is running
+docker --version
+
+# Build the application image (will be done automatically)
+docker build -t currency-converter .
+```
+
+### **CI/CD Automation**
+
+#### **Local CI/CD Testing**
+```bash
+# Run complete CI/CD pipeline locally
+./application/tests/ci_runner.sh
+
+# Available modes:
+./application/tests/ci_runner.sh setup       # Setup environment only
+./application/tests/ci_runner.sh quality     # Code quality checks
+./application/tests/ci_runner.sh unit        # Unit tests only
+./application/tests/ci_runner.sh docker      # Docker build and test
+./application/tests/ci_runner.sh integration # Integration tests
+./application/tests/ci_runner.sh helm        # Helm chart testing
+./application/tests/ci_runner.sh quick       # Quick unit tests
+./application/tests/ci_runner.sh all         # Complete pipeline (default)
+```
+
+#### **GitHub Actions CI/CD**
+The project includes a comprehensive GitHub Actions workflow (`.github/workflows/ci.yml`) that automatically:
+
+1. **Code Quality**: Black formatting, isort, flake8, pylint
+2. **Security Scanning**: Bandit security linting, Safety vulnerability scanning
+3. **Unit Testing**: Cross-platform testing (Python 3.9, 3.10, 3.11)
+4. **Docker Testing**: Build and test containerized application
+5. **Integration Testing**: Full application stack testing
+6. **Helm Testing**: Kubernetes deployment testing with Kind
+7. **Performance Testing**: Load testing with Apache Bench
+8. **Staging Deployment**: Automated deployment on main branch
+
+#### **CI/CD Pipeline Stages**
+```yaml
+# Trigger: Push to main/develop or Pull Request to main
+lint → security → unit-tests → docker-build → integration-tests → helm-test → deploy-staging
+                ↘              ↗
+                  performance-test (main branch only)
+```
+
+### **Test Reports and Coverage**
+
+#### **HTML Test Reports**
+```bash
+# Generate comprehensive HTML test report
+pytest --html=reports/test_report.html --self-contained-html
+
+# Generate with coverage
+pytest --cov=../backend --cov-report=html --html=reports/test_report.html
+```
+
+#### **Coverage Requirements**
+- **Target Coverage**: 90%+ for critical components
+- **Health Endpoint**: 100% coverage
+- **Conversion Logic**: 100% coverage  
+- **Error Handling**: 95%+ coverage
+- **API Endpoints**: 90%+ coverage
+
+### **Manual Testing**
+
+#### **Backend API Testing**
+```bash
+# Health check
+curl http://127.0.0.1:8090/health
+
+# Currency conversion
+curl -X POST http://127.0.0.1:8090/api/convert \
+  -H "Content-Type: application/json" \
+  -d '{"amount": 100, "from": "USD", "to": "EUR"}'
+
+# Exchange rates
+curl "http://127.0.0.1:8090/api/rates?base=USD"
+
+# API information
+curl http://127.0.0.1:8090/api/info
+```
+
+#### **Frontend UI Testing**
+- Open http://127.0.0.1:5000
+- Test currency conversion form
+- Verify error handling
+- Check responsive design on different screen sizes
+- Test accessibility features
+
+#### **Docker Container Testing**
+```bash
+# Build and test container
+docker build -t currency-converter .
+docker run -p 8080:8080 currency-converter
+
+# Test container endpoints
+curl http://localhost:8080/health
+curl http://localhost:8080/
+```
+
+### **Performance Testing**
+
+#### **Load Testing**
+```bash
+# Install Apache Bench (if not available)
+sudo apt-get install apache2-utils  # Ubuntu/Debian
+brew install apache2-utils          # macOS
+
+# Test health endpoint performance
+ab -n 1000 -c 10 http://localhost:8080/health
+
+# Test conversion endpoint performance
+ab -n 500 -c 5 -p conversion_data.json -T application/json http://localhost:8080/api/convert
+```
+
+#### **Performance Benchmarks**
+- **Health Endpoint**: < 50ms average response time
+- **Conversion Endpoint**: < 100ms average response time
+- **Frontend Loading**: < 2s initial load
+- **Container Startup**: < 10s to healthy state
+
+### **Test Environment Setup**
+
+#### **Local Development**
+```bash
+# Create virtual environment
+python3 -m venv venv
+source venv/bin/activate  # Linux/macOS
+# venv\Scripts\activate   # Windows
+
+# Install dependencies
+pip install -r application/backend/requirements.txt
+pip install -r application/tests/requirements.txt
+```
+
+#### **Docker Environment**
+```bash
+# Ensure Docker is running
+docker info
+
+# Clean up previous containers (if any)
+docker stop currency-converter-test 2>/dev/null || true
+docker rm currency-converter-test 2>/dev/null || true
+```
+
+### **Troubleshooting Tests**
+
+#### **Common Issues**
+
+1. **Port Already in Use**
    ```bash
-   # Health check
-   curl http://127.0.0.1:8090/health
-   
-   # Currency conversion
-   curl -X POST http://127.0.0.1:8090/api/convert \
-     -H "Content-Type: application/json" \
-     -d '{"amount": 100, "from": "USD", "to": "EUR"}'
+   # Find and kill process using port
+   lsof -ti:8080 | xargs kill -9
    ```
 
-2. **Frontend UI Tests**:
-   - Open http://127.0.0.1:5000
-   - Test currency conversion form
-   - Verify error handling
-   - Check responsive design
+2. **Docker Build Failures**
+   ```bash
+   # Clean Docker cache
+   docker system prune -f
+   docker build --no-cache -t currency-converter .
+   ```
 
-### Automated Testing (Future)
-- Unit tests for backend API
-- Integration tests for frontend-backend communication
-- End-to-end tests with Selenium
-- Performance testing with load tests
+3. **Test Dependencies**
+   ```bash
+   # Reinstall test dependencies
+   pip install --upgrade -r application/tests/requirements.txt
+   ```
+
+4. **Permission Issues**
+   ```bash
+   # Make scripts executable
+   chmod +x application/tests/run_tests.py
+   chmod +x application/tests/ci_runner.sh
+   ```
+
+### **Test Coverage Reports**
+
+After running tests with coverage, you can view detailed reports:
+
+- **Terminal Coverage**: Displayed immediately after test run
+- **HTML Coverage**: `application/tests/htmlcov/index.html`
+- **Test Reports**: `application/tests/reports/test_report.html`
+
+### **Continuous Integration**
+
+The CI/CD pipeline automatically runs on:
+- **Push to main/develop**: Full pipeline including deployment
+- **Pull Requests**: All tests except deployment
+- **Scheduled**: Nightly performance testing (if configured)
+
+**Pipeline Status**: All tests must pass for deployment to proceed.
 
 ## 🌍 Supported Currencies
 

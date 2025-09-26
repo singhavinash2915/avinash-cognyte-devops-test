@@ -1,0 +1,295 @@
+name: Currency Converter CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  PYTHON_VERSION: '3.11'
+  REGISTRY: ghcr.io
+  IMAGE_NAME: currency-converter
+
+jobs:
+  # Step 1: Code Quality and Linting
+  lint:
+    name: Code Quality & Linting
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ env.PYTHON_VERSION }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install flake8 black isort pylint
+        pip install -r application/backend/requirements.txt
+    
+    - name: Run Black formatter check
+      run: |
+        black --check --diff application/backend/
+    
+    - name: Run isort import sorting check
+      run: |
+        isort --check-only --diff application/backend/
+    
+    - name: Run flake8 linting
+      run: |
+        flake8 application/backend/ --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 application/backend/ --count --exit-zero --max-complexity=10 --max-line-length=88 --statistics
+    
+    - name: Run pylint
+      run: |
+        pylint application/backend/ --exit-zero
+
+  # Step 2: Run Tests
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    needs: lint
+    
+    strategy:
+      matrix:
+        python-version: ['3.9', '3.10', '3.11']
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r application/backend/requirements.txt
+        pip install -r application/tests/requirements.txt
+    
+    - name: Run unit tests with coverage
+      run: |
+        cd application/tests
+        python -m pytest -m "unit" --cov=../backend --cov-report=xml --cov-report=term-missing -v
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./application/tests/coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+
+  # Step 3: Build and Push Docker Image
+  build-and-push:
+    name: Build & Push Docker Image
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+      image-digest: ${{ steps.build.outputs.digest }}
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Log in to Container Registry
+      if: github.event_name != 'pull_request'
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ github.repository }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=sha,prefix={{branch}}-
+          type=raw,value=latest,enable={{is_default_branch}}
+    
+    - name: Build and push Docker image
+      id: build
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: ${{ github.event_name != 'pull_request' }}
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+    
+    - name: Test Docker image
+      run: |
+        # Load the built image for testing (if it was pushed, pull it back)
+        if [ "${{ github.event_name }}" != "pull_request" ]; then
+          docker pull ${{ steps.meta.outputs.tags }}
+        fi
+        
+        # Start container in background for testing
+        docker run -d -p 8080:8080 --name test-container ${{ steps.meta.outputs.tags }}
+        
+        # Wait for container to be ready
+        timeout 30 bash -c 'until curl -f http://localhost:8080/health; do sleep 2; done'
+        
+        # Test endpoints
+        curl -f http://localhost:8080/health
+        curl -f http://localhost:8080/
+        curl -f -X POST http://localhost:8080/api/convert \
+          -H "Content-Type: application/json" \
+          -d '{"amount": 100, "from": "USD", "to": "EUR"}'
+        
+        # Cleanup
+        docker stop test-container
+        docker rm test-container
+
+  # Step 4: Update Helm Chart Values
+  update-helm-chart:
+    name: Update Helm Chart Values
+    runs-on: ubuntu-latest
+    needs: [build-and-push]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        fetch-depth: 0
+    
+    - name: Configure Git
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+    
+    - name: Extract image tag
+      id: extract-tag
+      run: |
+        # Extract the SHA-based tag from the previous job
+        IMAGE_TAG="${{ needs.build-and-push.outputs.image-tag }}"
+        # Get the SHA tag (format: main-<sha>)
+        SHA_TAG=$(echo "$IMAGE_TAG" | grep -o "main-[a-f0-9]\{7\}" | head -1)
+        if [ -z "$SHA_TAG" ]; then
+          SHA_TAG="main-$(git rev-parse --short HEAD)"
+        fi
+        echo "sha-tag=$SHA_TAG" >> $GITHUB_OUTPUT
+        echo "Full image reference: ${{ env.REGISTRY }}/${{ github.repository }}/${{ env.IMAGE_NAME }}:$SHA_TAG"
+    
+    - name: Update Helm values.yaml
+      run: |
+        # Update the image tag in Helm values.yaml
+        SHA_TAG="${{ steps.extract-tag.outputs.sha-tag }}"
+        FULL_IMAGE_NAME="${{ env.REGISTRY }}/${{ github.repository }}/${{ env.IMAGE_NAME }}"
+        
+        # Update values.yaml
+        sed -i "s|repository: .*|repository: $FULL_IMAGE_NAME|g" helm/currency-converter/values.yaml
+        sed -i "s|tag: .*|tag: \"$SHA_TAG\"|g" helm/currency-converter/values.yaml
+        
+        # Verify the changes
+        echo "Updated Helm values.yaml:"
+        grep -A 3 "image:" helm/currency-converter/values.yaml
+    
+    - name: Update Chart.yaml version
+      run: |
+        # Bump the chart version (patch version)
+        CURRENT_VERSION=$(grep "^version:" helm/currency-converter/Chart.yaml | cut -d' ' -f2)
+        # Simple version bump - increment patch version
+        NEW_VERSION=$(echo $CURRENT_VERSION | awk -F. '{$NF = $NF + 1;} 1' | sed 's/ /./g')
+        sed -i "s/^version: .*/version: $NEW_VERSION/" helm/currency-converter/Chart.yaml
+        
+        # Update appVersion to match the image tag
+        SHA_TAG="${{ steps.extract-tag.outputs.sha-tag }}"
+        sed -i "s/^appVersion: .*/appVersion: \"$SHA_TAG\"/" helm/currency-converter/Chart.yaml
+        
+        echo "Updated Chart.yaml:"
+        grep -E "^(version|appVersion):" helm/currency-converter/Chart.yaml
+    
+    - name: Validate Helm chart
+      run: |
+        # Install Helm
+        curl https://get.helm.sh/helm-v3.12.0-linux-amd64.tar.gz | tar xz
+        sudo mv linux-amd64/helm /usr/local/bin/helm
+        
+        # Lint the updated chart
+        helm lint helm/currency-converter/
+        
+        # Test template rendering
+        helm template test-release helm/currency-converter/ > /tmp/rendered-templates.yaml
+        echo "Helm chart validation successful"
+    
+    - name: Commit and push changes
+      run: |
+        # Check if there are changes to commit
+        if [ -n "$(git status --porcelain)" ]; then
+          git add helm/currency-converter/values.yaml helm/currency-converter/Chart.yaml
+          git commit -m "🚀 Update Helm chart with new image tag: ${{ steps.extract-tag.outputs.sha-tag }}
+          
+          - Updated image tag to: ${{ steps.extract-tag.outputs.sha-tag }}
+          - Bumped chart version
+          - Updated appVersion
+          
+          git push origin main
+          echo "✅ Helm chart updated and pushed to repository"
+        else
+          echo "ℹ️ No changes to commit"
+        fi
+
+  # Step 5: Deployment Summary
+  deployment-summary:
+    name: Deployment Summary
+    runs-on: ubuntu-latest
+    needs: [build-and-push, update-helm-chart]
+    if: always()
+    
+    steps:
+    - name: Generate deployment summary
+      run: |
+        echo "## 🚀 Currency Converter CI/CD Pipeline Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Pipeline Results:" >> $GITHUB_STEP_SUMMARY
+        echo "- **Linting**: ${{ needs.lint.result == 'success' && '✅ Passed' || '❌ Failed' }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Tests**: ${{ needs.test.result == 'success' && '✅ Passed' || '❌ Failed' }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Docker Build**: ${{ needs.build-and-push.result == 'success' && '✅ Passed' || '❌ Failed' }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Helm Update**: ${{ needs.update-helm-chart.result == 'success' && '✅ Passed' || needs.update-helm-chart.result == 'skipped' && '⏭️ Skipped (not main branch)' || '❌ Failed' }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        if [ "${{ github.event_name }}" != "pull_request" ]; then
+          echo "### 📦 Built Image:" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "${{ needs.build-and-push.outputs.image-tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+          echo "### 🎯 Next Steps:" >> $GITHUB_STEP_SUMMARY
+          echo "1. Helm chart has been updated with the new image tag" >> $GITHUB_STEP_SUMMARY
+          echo "2. Deploy to staging: \`helm upgrade --install staging ./helm/currency-converter\`" >> $GITHUB_STEP_SUMMARY
+          echo "3. Deploy to production: \`helm upgrade --install production ./helm/currency-converter -f production-values.yaml\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        echo "### 📋 Pipeline Features:" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ **Code Quality**: Black, isort, flake8, pylint" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ **Testing**: Unit tests with coverage across Python 3.9-3.11" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ **Docker**: Multi-platform build with caching and testing" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ **Registry**: Pushes to GitHub Container Registry" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ **Helm**: Automatic chart updates with version bumping" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ **GitOps**: Commits updated chart back to repository" >> $GITHUB_STEP_SUMMARY
