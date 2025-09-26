@@ -8,7 +8,7 @@ const CONFIG = {
     // API Configuration
     API: {
         // Base URL for the backend API
-        BASE_URL: 'http://127.0.0.1:8090',
+        BASE_URL: window.location.origin,
         
         // API endpoints
         ENDPOINTS: {

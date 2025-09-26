@@ -4,7 +4,7 @@ Currency Converter API Backend
 Production-grade Flask API for currency conversion
 """
 
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory, send_file
 from flask_cors import CORS
 import logging
 import os
@@ -168,14 +168,39 @@ def convert():
             'message': 'An unexpected error occurred during conversion'
         }), 500
 
+# Frontend serving routes (for containerized deployment)
+@app.route('/')
+def serve_frontend():
+    """Serve the main frontend page"""
+    frontend_path = os.path.join(os.path.dirname(__file__), '..', 'frontend')
+    return send_file(os.path.join(frontend_path, 'index.html'))
+
+@app.route('/assets/<path:filename>')
+def serve_assets(filename):
+    """Serve frontend assets (CSS, JS, etc.)"""
+    frontend_path = os.path.join(os.path.dirname(__file__), '..', 'frontend')
+    return send_from_directory(os.path.join(frontend_path, 'assets'), filename)
+
 # Error handlers
 @app.errorhandler(404)
 def not_found(error):
     """Handle 404 errors"""
-    return jsonify({
-        'error': 'Endpoint not found',
-        'message': 'The requested endpoint does not exist'
-    }), 404
+    # Check if this is an API request
+    if request.path.startswith('/api/') or request.path.startswith('/health'):
+        return jsonify({
+            'error': 'Endpoint not found',
+            'message': 'The requested endpoint does not exist'
+        }), 404
+    else:
+        # For non-API requests, serve the frontend
+        try:
+            frontend_path = os.path.join(os.path.dirname(__file__), '..', 'frontend')
+            return send_file(os.path.join(frontend_path, 'index.html'))
+        except:
+            return jsonify({
+                'error': 'Frontend not found',
+                'message': 'Frontend files are not available'
+            }), 404
 
 @app.errorhandler(405)
 def method_not_allowed(error):
@@ -195,12 +220,14 @@ def internal_error(error):
     }), 500
 
 if __name__ == '__main__':
-    # Get port from environment variable or default to 8090
-    port = int(os.environ.get('PORT', 8090))
-    host = os.environ.get('HOST', '127.0.0.1')
+    # Get port from environment variable or default to 8080  
+    port = int(os.environ.get('PORT', 8080))
+    host = os.environ.get('HOST', '0.0.0.0')
     
     logger.info(f"Starting Currency Converter API on {host}:{port}")
     logger.info(f"API Version: {config.API_VERSION}")
     logger.info(f"Supported currencies: {config.SUPPORTED_CURRENCIES}")
     
-    app.run(host=host, port=port, debug=True)
+    # Use debug mode only in development
+    debug_mode = os.environ.get('FLASK_ENV', 'production') != 'production'
+    app.run(host=host, port=port, debug=debug_mode)

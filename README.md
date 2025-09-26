@@ -271,6 +271,126 @@ avinash-cognyte-devops-test/
 
 This architecture demonstrates enterprise-grade practices suitable for production deployment in cloud environments.
 
+## 🐳 Docker Containerization
+
+The application is fully containerized using Docker with production-ready configurations.
+
+### **Container Features:**
+- **Multi-stage build** for optimized image size
+- **Security hardened** with non-root user execution
+- **Combined backend + frontend** in single container
+- **Health checks** for container monitoring
+- **Production environment** configuration
+
+### **Build and Run the Docker Image:**
+
+#### **Prerequisites:**
+- Docker installed and running
+- Minimum 1GB RAM available
+- Port 8080 available
+
+#### **Build the Image:**
+```bash
+# Clone the repository
+git clone https://github.com/singhavinash2915/avinash-cognyte-devops-test.git
+cd avinash-cognyte-devops-test
+
+# Build the Docker image
+docker build -t currency-converter .
+```
+
+#### **Run the Container:**
+```bash
+# Run in detached mode
+docker run -d -p 8080:8080 --name currency-converter currency-converter
+
+# Or run in interactive mode (see logs)
+docker run -p 8080:8080 --name currency-converter currency-converter
+```
+
+#### **Access the Application:**
+- **Frontend UI**: http://localhost:8080
+- **API Health Check**: http://localhost:8080/health
+- **API Documentation**: http://localhost:8080/api/info
+
+#### **Container Management:**
+```bash
+# Check container status
+docker ps
+
+# View container logs
+docker logs currency-converter
+
+# Stop the container
+docker stop currency-converter
+
+# Remove the container
+docker rm currency-converter
+
+# Remove the image
+docker rmi currency-converter
+```
+
+#### **Health Check:**
+The container includes automatic health monitoring:
+```bash
+# Check health status
+docker inspect --format='{{.State.Health.Status}}' currency-converter
+
+# View health check logs
+docker inspect --format='{{range .State.Health.Log}}{{.Output}}{{end}}' currency-converter
+```
+
+#### **Environment Variables:**
+You can customize the container with environment variables:
+```bash
+docker run -d -p 8080:8080 \
+  -e PORT=8080 \
+  -e HOST=0.0.0.0 \
+  -e FLASK_ENV=production \
+  --name currency-converter \
+  currency-converter
+```
+
+#### **Volume Mounting (Optional):**
+For persistent logs:
+```bash
+docker run -d -p 8080:8080 \
+  -v $(pwd)/logs:/app/logs \
+  --name currency-converter \
+  currency-converter
+```
+
+### **Docker Image Details:**
+- **Base Image**: python:3.11-slim-bookworm
+- **Size**: ~150MB (optimized multi-stage build)
+- **User**: Non-root (appuser)
+- **Working Directory**: /app
+- **Exposed Port**: 8080
+- **Health Check**: Every 30 seconds
+
+### **Production Deployment:**
+For production environments, consider:
+```bash
+# Run with resource limits
+docker run -d \
+  --memory=512m \
+  --cpus=1.0 \
+  -p 8080:8080 \
+  --restart=unless-stopped \
+  --name currency-converter \
+  currency-converter
+
+# With logging configuration
+docker run -d \
+  -p 8080:8080 \
+  --log-driver=json-file \
+  --log-opt max-size=10m \
+  --log-opt max-file=3 \
+  --name currency-converter \
+  currency-converter
+```
+
 ## 🤝 Contributing
 
 This project demonstrates production-grade DevOps practices for technical assessment purposes.
