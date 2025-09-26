@@ -350,7 +350,7 @@ docker build -t currency-converter .
 #### **GitHub Actions CI/CD**
 The project includes a comprehensive GitHub Actions workflow (`.github/workflows/ci.yml`) that automatically:
 
-1. **Code Quality**: Black formatting, isort, flake8, pylint
+1. **Code Quality**: flake8, pylint
 2. **Security Scanning**: Bandit security linting, Safety vulnerability scanning
 3. **Unit Testing**: Cross-platform testing (Python 3.9, 3.10, 3.11)
 4. **Docker Testing**: Build and test containerized application

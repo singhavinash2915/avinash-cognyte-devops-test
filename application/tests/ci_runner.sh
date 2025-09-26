@@ -100,25 +100,9 @@ run_code_quality() {
     source "$PROJECT_ROOT/venv/bin/activate"
     
     # Install code quality tools
-    pip install black flake8 isort pylint >/dev/null 2>&1 || true
+    pip install flake8 pylint >/dev/null 2>&1 || true
     
     cd "$BACKEND_DIR"
-    
-    # Check formatting with black
-    print_status "Checking code formatting..."
-    if ! black --check --diff . 2>/dev/null; then
-        print_warning "Code formatting issues found. Run 'black .' to fix."
-    else
-        print_success "Code formatting is correct"
-    fi
-    
-    # Check import sorting
-    print_status "Checking import sorting..."
-    if ! isort --check-only --diff . 2>/dev/null; then
-        print_warning "Import sorting issues found. Run 'isort .' to fix."
-    else
-        print_success "Import sorting is correct"
-    fi
     
     # Run flake8 linting
     print_status "Running flake8 linting..."

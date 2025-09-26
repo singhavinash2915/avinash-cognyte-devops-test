@@ -6,12 +6,10 @@ This GitHub Actions pipeline provides a complete CI/CD solution for the Currency
 
 ## 📋 Pipeline Components
 
-### **1. Code Quality & Linting**
-- **Tools Used**: Black, isort, flake8, pylint
+### **1. Code Linting**
+- **Tools Used**: flake8, pylint
 - **Purpose**: Ensures code quality and consistency
 - **Actions**:
-  - Checks Python code formatting with Black
-  - Validates import sorting with isort
   - Performs static analysis with flake8 and pylint
   - Fails pipeline if critical issues are found
 

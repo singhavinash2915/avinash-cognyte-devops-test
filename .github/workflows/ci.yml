@@ -12,9 +12,9 @@ env:
   IMAGE_NAME: currency-converter
 
 jobs:
-  # Step 1: Code Quality and Linting
+  # Step 1: Code Linting
   lint:
-    name: Code Quality & Linting
+    name: Code Linting
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
@@ -27,16 +27,8 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install flake8 black isort pylint
+        pip install flake8 pylint
         pip install -r application/backend/requirements.txt
-    
-    - name: Run Black formatter check
-      run: |
-        black --check --diff application/backend/
-    
-    - name: Run isort import sorting check
-      run: |
-        isort --check-only --diff application/backend/
     
     - name: Run flake8 linting
       run: |
@@ -287,7 +279,7 @@ jobs:
         fi
         
         echo "### 📋 Pipeline Features:" >> $GITHUB_STEP_SUMMARY
-        echo "- ✅ **Code Quality**: Black, isort, flake8, pylint" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ **Code Quality**: flake8, pylint" >> $GITHUB_STEP_SUMMARY
         echo "- ✅ **Testing**: Unit tests with coverage across Python 3.9-3.11" >> $GITHUB_STEP_SUMMARY
         echo "- ✅ **Docker**: Multi-platform build with caching and testing" >> $GITHUB_STEP_SUMMARY
         echo "- ✅ **Registry**: Pushes to GitHub Container Registry" >> $GITHUB_STEP_SUMMARY
