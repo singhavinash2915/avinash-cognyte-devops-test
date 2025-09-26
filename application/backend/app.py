@@ -8,6 +8,7 @@ from flask import Flask, request, jsonify, send_from_directory, send_file
 from flask_cors import CORS
 import logging
 import os
+import json
 from datetime import datetime
 
 # Configure logging
@@ -135,7 +136,21 @@ def convert():
     """Convert currency amounts"""
     try:
         # Get JSON data from request
-        data = request.get_json()
+        try:
+            data = request.get_json()
+            if data is None:
+                # Try to handle cases where Content-Type is missing but data might be JSON
+                if request.data:
+                    try:
+                        data = json.loads(request.data)
+                    except json.JSONDecodeError:
+                        return jsonify({"error": "Invalid JSON data provided"}), 400
+                else:
+                    return jsonify({"error": "No JSON data provided"}), 400
+        except Exception as json_error:
+            logger.warning(f"Invalid JSON request: {str(json_error)}")
+            return jsonify({"error": "Invalid JSON data or missing Content-Type header"}), 400
+        
         logger.info(f"Conversion request: {data}")
 
         # Validate request data
