@@ -11,6 +11,10 @@ env:
   REGISTRY: ghcr.io
   IMAGE_NAME: currency-converter
 
+permissions:
+  contents: write
+  packages: write
+
 jobs:
   # Step 1: Code Linting
   lint:
@@ -111,7 +115,7 @@ jobs:
       id: meta
       uses: docker/metadata-action@v5
       with:
-        images: ${{ env.REGISTRY }}/${{ github.repository }}/${{ env.IMAGE_NAME }}
+        images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}
         tags: |
           type=ref,event=branch
           type=ref,event=pr
@@ -188,7 +192,7 @@ jobs:
       run: |
         # Update the image tag in Helm values.yaml
         SHA_TAG="${{ steps.extract-tag.outputs.sha-tag }}"
-        FULL_IMAGE_NAME="${{ env.REGISTRY }}/${{ github.repository }}/${{ env.IMAGE_NAME }}"
+        FULL_IMAGE_NAME="${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}"
         
         # Update values.yaml
         sed -i "s|repository: .*|repository: $FULL_IMAGE_NAME|g" helm/currency-converter/values.yaml

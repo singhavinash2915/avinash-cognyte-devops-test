@@ -1,5 +1,5 @@
 # Multi-stage Docker build for Currency Converter Application
-FROM python:3.11-slim-bookworm as builder
+FROM python:3.11-slim-bookworm AS builder
 
 # Set working directory
 WORKDIR /app
