@@ -1,0 +1,39 @@
+# Example values for development environment
+replicaCount: 2
+
+image:
+  repository: currency-converter
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+service:
+  type: NodePort
+  port: 80
+  targetPort: 8080
+
+resources:
+  limits:
+    cpu: 300m
+    memory: 256Mi
+  requests:
+    cpu: 150m
+    memory: 128Mi
+
+# Enable ingress for development
+ingress:
+  enabled: true
+  className: ""
+  hosts:
+    - host: currency-converter.local
+      paths:
+        - path: /
+          pathType: Prefix
+
+# Disable autoscaling for development
+autoscaling:
+  enabled: false
+
+# Enable pod disruption budget
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1

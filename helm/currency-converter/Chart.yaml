@@ -1,0 +1,25 @@
+apiVersion: v2
+name: currency-converter
+description: A production-grade currency converter application with microservices architecture
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+
+keywords:
+  - currency
+  - converter
+  - microservices
+  - flask
+  - web-application
+
+home: https://github.com/singhavinash2915/avinash-cognyte-devops-test
+sources:
+  - https://github.com/singhavinash2915/avinash-cognyte-devops-test
+
+maintainers:
+  - name: Avinash Singh
+    email: avinash@example.com
+
+annotations:
+  category: WebApplication
+  licenses: Educational

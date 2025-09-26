@@ -391,6 +391,247 @@ docker run -d \
   currency-converter
 ```
 
+## ⎈ Kubernetes Deployment with Helm
+
+The application includes a production-ready Helm chart for Kubernetes deployment with configurable scaling, ingress, and monitoring.
+
+### **Helm Chart Features:**
+- **Configurable replica count** for horizontal scaling
+- **Service exposure** with multiple service types
+- **Optional Ingress** for external access
+- **Horizontal Pod Autoscaler** for automatic scaling
+- **Pod Disruption Budget** for high availability
+- **Health checks** and monitoring ready
+- **Security hardened** with non-root containers
+
+### **Prerequisites:**
+- Kubernetes cluster (1.19+)
+- Helm 3.2.0+
+- kubectl configured
+- Docker image available: `currency-converter:latest`
+
+### **Install the Helm Chart:**
+
+#### **Quick Start:**
+```bash
+# Clone the repository
+git clone https://github.com/singhavinash2915/avinash-cognyte-devops-test.git
+cd avinash-cognyte-devops-test
+
+# Install with default values (3 replicas, ClusterIP service)
+helm install currency-converter ./helm/currency-converter
+```
+
+#### **Development Environment:**
+```bash
+# Single replica with NodePort for easy access
+helm install currency-converter ./helm/currency-converter \
+  --set replicaCount=1 \
+  --set service.type=NodePort \
+  --set resources.limits.memory=256Mi
+
+# Get NodePort and access the application
+kubectl get svc currency-converter
+```
+
+#### **Production Environment:**
+```bash
+# Multiple replicas with autoscaling and ingress
+helm install currency-converter ./helm/currency-converter \
+  --set replicaCount=5 \
+  --set autoscaling.enabled=true \
+  --set autoscaling.minReplicas=3 \
+  --set autoscaling.maxReplicas=20 \
+  --set ingress.enabled=true \
+  --set ingress.hosts[0].host=currency-converter.example.com
+```
+
+#### **With LoadBalancer (Cloud Environments):**
+```bash
+# Deploy with LoadBalancer service type
+helm install currency-converter ./helm/currency-converter \
+  --set service.type=LoadBalancer \
+  --set replicaCount=3
+```
+
+### **Access the Application:**
+
+#### **ClusterIP (Default):**
+```bash
+# Port forward to access locally
+kubectl port-forward svc/currency-converter 8080:80
+# Access at: http://localhost:8080
+```
+
+#### **NodePort:**
+```bash
+# Get the NodePort
+export NODE_PORT=$(kubectl get svc currency-converter -o jsonpath='{.spec.ports[0].nodePort}')
+export NODE_IP=$(kubectl get nodes -o jsonpath='{.items[0].status.addresses[0].address}')
+echo "http://$NODE_IP:$NODE_PORT"
+```
+
+#### **LoadBalancer:**
+```bash
+# Get the LoadBalancer IP
+kubectl get svc currency-converter
+# Access at the EXTERNAL-IP shown
+```
+
+#### **Ingress:**
+```bash
+# Access via configured hostname
+curl http://currency-converter.example.com
+```
+
+### **Configuration Options:**
+
+#### **Scaling Configuration:**
+```bash
+# Set specific replica count
+helm install currency-converter ./helm/currency-converter \
+  --set replicaCount=7
+
+# Enable autoscaling
+helm install currency-converter ./helm/currency-converter \
+  --set autoscaling.enabled=true \
+  --set autoscaling.minReplicas=2 \
+  --set autoscaling.maxReplicas=15 \
+  --set autoscaling.targetCPUUtilizationPercentage=70
+```
+
+#### **Resource Management:**
+```bash
+# Configure resource limits
+helm install currency-converter ./helm/currency-converter \
+  --set resources.limits.cpu=1000m \
+  --set resources.limits.memory=1Gi \
+  --set resources.requests.cpu=500m \
+  --set resources.requests.memory=512Mi
+```
+
+#### **Custom Values File:**
+```bash
+# Create custom-values.yaml
+cat > custom-values.yaml << EOF
+replicaCount: 5
+service:
+  type: LoadBalancer
+ingress:
+  enabled: true
+  hosts:
+    - host: my-currency-app.com
+      paths:
+        - path: /
+          pathType: Prefix
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 20
+EOF
+
+# Install with custom values
+helm install currency-converter ./helm/currency-converter -f custom-values.yaml
+```
+
+### **Management Commands:**
+
+#### **Check Deployment Status:**
+```bash
+# View all resources
+kubectl get all -l app.kubernetes.io/name=currency-converter
+
+# Check pod status
+kubectl get pods -l app.kubernetes.io/name=currency-converter
+
+# View deployment details
+kubectl describe deployment currency-converter
+```
+
+#### **Monitor Application:**
+```bash
+# View logs
+kubectl logs -l app.kubernetes.io/name=currency-converter
+
+# Check health endpoint
+kubectl port-forward svc/currency-converter 8080:80
+curl http://localhost:8080/health
+```
+
+#### **Scale the Application:**
+```bash
+# Manual scaling
+kubectl scale deployment currency-converter --replicas=10
+
+# Update via Helm
+helm upgrade currency-converter ./helm/currency-converter \
+  --set replicaCount=10
+```
+
+#### **Update the Application:**
+```bash
+# Upgrade with new image tag
+helm upgrade currency-converter ./helm/currency-converter \
+  --set image.tag=v2.0.0
+
+# Upgrade with new values
+helm upgrade currency-converter ./helm/currency-converter -f new-values.yaml
+```
+
+#### **Uninstall:**
+```bash
+# Remove the deployment
+helm uninstall currency-converter
+
+# Verify cleanup
+kubectl get all -l app.kubernetes.io/name=currency-converter
+```
+
+### **Production Considerations:**
+
+#### **High Availability Setup:**
+```bash
+# Deploy with anti-affinity and PDB
+helm install currency-converter ./helm/currency-converter \
+  --set replicaCount=5 \
+  --set podDisruptionBudget.enabled=true \
+  --set podDisruptionBudget.minAvailable=2 \
+  --values ha-values.yaml
+```
+
+#### **Monitoring and Observability:**
+```bash
+# Deploy with monitoring enabled
+helm install currency-converter ./helm/currency-converter \
+  --set monitoring.enabled=true \
+  --set monitoring.serviceMonitor.enabled=true
+```
+
+### **Troubleshooting:**
+
+#### **Check Chart Syntax:**
+```bash
+# Lint the chart
+helm lint ./helm/currency-converter
+
+# Dry run installation
+helm install currency-converter ./helm/currency-converter --dry-run
+```
+
+#### **Debug Deployment:**
+```bash
+# Get Helm values
+helm get values currency-converter
+
+# Get rendered manifests
+helm get manifest currency-converter
+
+# Check events
+kubectl get events --sort-by=.metadata.creationTimestamp
+```
+
+For detailed configuration options and examples, see the [Helm Chart README](./helm/currency-converter/README.md).
+
 ## 🤝 Contributing
 
 This project demonstrates production-grade DevOps practices for technical assessment purposes.
