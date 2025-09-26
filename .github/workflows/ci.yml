@@ -115,7 +115,7 @@ jobs:
         tags: |
           type=ref,event=branch
           type=ref,event=pr
-          type=sha,prefix={{branch}}-
+          type=raw,value={{branch}}-${{ github.run_number }}
           type=raw,value=latest,enable={{is_default_branch}}
     
     - name: Build and push Docker image
@@ -178,25 +178,25 @@ jobs:
     - name: Extract image tag
       id: extract-tag
       run: |
-        # Extract the SHA-based tag from the previous job
+        # Extract the build-number-based tag from the previous job
         IMAGE_TAG="${{ needs.build-and-push.outputs.image-tag }}"
-        # Get the SHA tag (format: main-<sha>)
-        SHA_TAG=$(echo "$IMAGE_TAG" | grep -o "main-[a-f0-9]\{7\}" | head -1)
-        if [ -z "$SHA_TAG" ]; then
-          SHA_TAG="main-$(git rev-parse --short HEAD)"
+        # Get the branch-buildno tag (format: main-123)
+        BUILD_TAG=$(echo "$IMAGE_TAG" | grep -o "${{ github.ref_name }}-[0-9]\+" | head -1)
+        if [ -z "$BUILD_TAG" ]; then
+          BUILD_TAG="${{ github.ref_name }}-${{ github.run_number }}"
         fi
-        echo "sha-tag=$SHA_TAG" >> $GITHUB_OUTPUT
-        echo "Full image reference: ${{ env.REGISTRY }}/${{ github.repository }}/${{ env.IMAGE_NAME }}:$SHA_TAG"
+        echo "build-tag=$BUILD_TAG" >> $GITHUB_OUTPUT
+        echo "Full image reference: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:$BUILD_TAG"
     
     - name: Update Helm values.yaml
       run: |
         # Update the image tag in Helm values.yaml
-        SHA_TAG="${{ steps.extract-tag.outputs.sha-tag }}"
+        BUILD_TAG="${{ steps.extract-tag.outputs.build-tag }}"
         FULL_IMAGE_NAME="${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}"
         
         # Update values.yaml
         sed -i "s|repository: .*|repository: $FULL_IMAGE_NAME|g" helm/currency-converter/values.yaml
-        sed -i "s|tag: .*|tag: \"$SHA_TAG\"|g" helm/currency-converter/values.yaml
+        sed -i "s|tag: .*|tag: \"$BUILD_TAG\"|g" helm/currency-converter/values.yaml
         
         # Verify the changes
         echo "Updated Helm values.yaml:"
@@ -211,8 +211,8 @@ jobs:
         sed -i "s/^version: .*/version: $NEW_VERSION/" helm/currency-converter/Chart.yaml
         
         # Update appVersion to match the image tag
-        SHA_TAG="${{ steps.extract-tag.outputs.sha-tag }}"
-        sed -i "s/^appVersion: .*/appVersion: \"$SHA_TAG\"/" helm/currency-converter/Chart.yaml
+        BUILD_TAG="${{ steps.extract-tag.outputs.build-tag }}"
+        sed -i "s/^appVersion: .*/appVersion: \"$BUILD_TAG\"/" helm/currency-converter/Chart.yaml
         
         echo "Updated Chart.yaml:"
         grep -E "^(version|appVersion):" helm/currency-converter/Chart.yaml
@@ -235,11 +235,14 @@ jobs:
         # Check if there are changes to commit
         if [ -n "$(git status --porcelain)" ]; then
           git add helm/currency-converter/values.yaml helm/currency-converter/Chart.yaml
-          git commit -m "🚀 Update Helm chart with new image tag: ${{ steps.extract-tag.outputs.sha-tag }}
-          
-          - Updated image tag to: ${{ steps.extract-tag.outputs.sha-tag }}
-          - Bumped chart version
-          - Updated appVersion
+          git commit -m "$(cat <<'EOF'
+        🚀 Update Helm chart with new image tag: ${{ steps.extract-tag.outputs.build-tag }}
+        
+        - Updated image tag to: ${{ steps.extract-tag.outputs.build-tag }}
+        - Bumped chart version
+        - Updated appVersion
+        EOF
+        )"
           
           git push origin main
           echo "✅ Helm chart updated and pushed to repository"
