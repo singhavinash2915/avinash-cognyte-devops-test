@@ -11,7 +11,7 @@ app:
 image:
   repository: ghcr.io/singhavinash2915/currency-converter
   pullPolicy: IfNotPresent
-  tag: "main-8"
+  tag: "main-9"
 
 # Image pull secrets (for private registries)
 imagePullSecrets: []
