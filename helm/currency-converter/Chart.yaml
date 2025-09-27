@@ -2,8 +2,8 @@ apiVersion: v2
 name: currency-converter
 description: A production-grade currency converter application with microservices architecture
 type: application
-version: 1.0.2
-appVersion: "main-9"
+version: 1.0.3
+appVersion: "main-10"
 
 keywords:
   - currency
