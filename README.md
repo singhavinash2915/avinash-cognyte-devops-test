@@ -929,6 +929,265 @@ kubectl get events --sort-by=.metadata.creationTimestamp
 
 For detailed configuration options and examples, see the [Helm Chart README](./helm/currency-converter/README.md).
 
+## 🏗️ Infrastructure as Code (IaC) with Terraform
+
+The project includes a complete Infrastructure as Code solution using Terraform and Kind for local Kubernetes development and testing.
+
+### **IaC Features:**
+- **Multi-node Kubernetes cluster** (1 master + 1 worker)
+- **ArgoCD GitOps platform** for automated deployments
+- **Metrics Server** for resource monitoring and HPA
+- **Automated cluster management** with comprehensive scripts
+- **Production-grade networking** and security policies
+
+### **Prerequisites:**
+- Docker Desktop or Docker Engine
+- Terraform >= 1.0
+- Kind (Kubernetes in Docker)
+- kubectl
+- Helm 3.x
+
+```bash
+# Install prerequisites on macOS
+brew install docker terraform kind kubectl helm
+```
+
+### **Quick Start:**
+
+#### **1. Create the Kubernetes Cluster:**
+```bash
+# Create cluster with ArgoCD and metrics server
+./infrastructure/scripts/setup-cluster.sh
+
+# Custom configuration
+./infrastructure/scripts/setup-cluster.sh --cluster-name my-cluster --k8s-version 1.28.0
+```
+
+#### **2. Validate the Cluster:**
+```bash
+# Run comprehensive validation tests
+./infrastructure/scripts/validate-cluster.sh
+
+# Verbose output with detailed cluster information
+./infrastructure/scripts/validate-cluster.sh --verbose
+```
+
+#### **3. Access ArgoCD GitOps Platform:**
+```bash
+# Set kubectl context
+export KUBECONFIG=./infrastructure/terraform/kubeconfig
+
+# Get ArgoCD admin password
+kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d
+
+# Access ArgoCD UI
+kubectl port-forward svc/argocd-server -n argocd 8080:443
+# URL: https://localhost:8080 (user: admin)
+```
+
+#### **4. Deploy Application via GitOps:**
+```bash
+# Deploy ArgoCD application (already configured for this repo)
+kubectl apply -f argocd/currency-converter-app.yaml
+
+# Monitor deployment
+kubectl get applications -n argocd
+kubectl get pods -n currency-converter -w
+```
+
+#### **5. Clean Up:**
+```bash
+# Destroy the cluster and clean up resources
+./infrastructure/scripts/teardown-cluster.sh
+
+# Force cleanup without confirmation
+./infrastructure/scripts/teardown-cluster.sh --force --clean-all
+```
+
+### **GitOps Workflow:**
+
+#### **Automatic Deployment:**
+The system is configured for **continuous deployment**:
+1. **Push changes** to the main branch
+2. **GitHub Actions** builds and pushes Docker image
+3. **ArgoCD automatically detects** the changes
+4. **Deployment happens automatically** without manual intervention
+
+#### **ArgoCD Configuration:**
+- **Repository**: https://github.com/singhavinash2915/avinash-cognyte-devops-test.git
+- **Path**: `helm/currency-converter`
+- **Branch**: `main`
+- **Auto-sync**: Enabled (deploys changes automatically)
+- **Self-healing**: Enabled (reverts manual changes)
+
+#### **Monitor GitOps:**
+```bash
+# Watch application status
+kubectl get applications -n argocd -w
+
+# View ArgoCD logs
+kubectl logs -n argocd deployment/argocd-application-controller
+
+# Check deployment events
+kubectl get events -n currency-converter --sort-by='.lastTimestamp'
+```
+
+### **Infrastructure Components:**
+
+#### **Terraform Resources:**
+- **Kind Cluster**: Multi-node Kubernetes cluster
+- **Namespaces**: Application and ArgoCD namespaces
+- **ArgoCD**: Complete GitOps platform installation
+- **Metrics Server**: Resource monitoring for HPA
+- **Networking**: CNI with proper pod/service subnets
+
+#### **Directory Structure:**
+```
+infrastructure/
+├── terraform/
+│   ├── main.tf           # Main infrastructure configuration
+│   ├── variables.tf      # Configurable parameters
+│   ├── outputs.tf        # Cluster information outputs
+│   └── versions.tf       # Provider requirements
+├── scripts/
+│   ├── setup-cluster.sh      # Cluster creation automation
+│   ├── teardown-cluster.sh   # Cluster destruction automation
+│   └── validate-cluster.sh   # Comprehensive cluster testing
+└── README.md             # Infrastructure documentation
+```
+
+#### **Automation Scripts:**
+
+**setup-cluster.sh Options:**
+```bash
+--cluster-name NAME     # Custom cluster name (default: currency-converter)
+--k8s-version VERSION   # Kubernetes version (default: 1.29.0)
+--skip-argocd          # Skip ArgoCD installation
+--skip-metrics         # Skip metrics server installation
+--force-recreate       # Delete and recreate existing cluster
+```
+
+**validate-cluster.sh Tests:**
+- ✅ Cluster connectivity and basic functionality
+- ✅ Node configuration (1 master + 1 worker)
+- ✅ System pods health
+- ✅ ArgoCD installation and functionality
+- ✅ Metrics server operation
+- ✅ Cluster networking and DNS
+- ✅ Storage functionality
+- ✅ Load balancer simulation
+- ✅ Port forwarding capability
+
+### **Advanced Configuration:**
+
+#### **Custom Terraform Variables:**
+```bash
+# Create terraform.tfvars
+cat > infrastructure/terraform/terraform.tfvars << EOF
+cluster_name        = "my-custom-cluster"
+kubernetes_version  = "1.28.0"
+argocd_enabled      = true
+metrics_enabled     = true
+namespace          = "my-app"
+argocd_namespace   = "argocd"
+EOF
+```
+
+#### **Manual Terraform Operations:**
+```bash
+cd infrastructure/terraform
+
+# Initialize Terraform
+terraform init
+
+# Plan infrastructure changes
+terraform plan
+
+# Apply infrastructure
+terraform apply
+
+# View outputs
+terraform output
+
+# Destroy infrastructure
+terraform destroy
+```
+
+### **Production Considerations:**
+
+#### **Security:**
+- **RBAC**: Role-based access control enabled
+- **Network Policies**: Namespace isolation
+- **Non-root containers**: Security hardened images
+- **TLS encryption**: All communication encrypted
+
+#### **Monitoring:**
+- **Metrics Server**: Resource metrics collection
+- **ArgoCD UI**: Application deployment monitoring
+- **Health checks**: Comprehensive service monitoring
+- **Logging**: Structured logging throughout
+
+#### **High Availability:**
+- **Multi-node cluster**: Control plane + worker separation
+- **Pod disruption budgets**: Ensure service availability
+- **Auto-healing**: ArgoCD self-healing capabilities
+- **Resource limits**: Proper resource management
+
+### **Troubleshooting:**
+
+#### **Common Issues:**
+```bash
+# Docker not running
+open -a Docker  # macOS
+sudo systemctl start docker  # Linux
+
+# Port conflicts
+lsof -i :8080  # Check port usage
+kubectl port-forward svc/service 8081:80  # Use different port
+
+# Cluster access issues
+export KUBECONFIG=./infrastructure/terraform/kubeconfig
+kubectl config current-context
+
+# ArgoCD access
+kubectl get pods -n argocd
+kubectl logs -n argocd deployment/argocd-server
+```
+
+#### **Debug Commands:**
+```bash
+# Check cluster status
+kubectl cluster-info
+kubectl get nodes -o wide
+kubectl get pods --all-namespaces
+
+# Check ArgoCD
+kubectl get applications -n argocd
+kubectl describe application currency-converter -n argocd
+
+# View logs
+kubectl logs -n currency-converter -l app.kubernetes.io/name=currency-converter
+```
+
+### **Git Management:**
+
+For Terraform files, follow these security practices:
+
+**✅ Commit to Git:**
+- `*.tf` files (main.tf, variables.tf, outputs.tf, versions.tf)
+- `.terraform.lock.hcl` (provider version locks)
+- `terraform.tfvars.example` (example configuration)
+
+**❌ Never Commit (in .gitignore):**
+- `*.tfstate*` (contains sensitive infrastructure state)
+- `*.tfvars` (may contain secrets and credentials)
+- `kubeconfig` (cluster access credentials)
+- `.terraform/` (downloaded provider plugins)
+
+Use `terraform.tfvars.example` as a template and create your own `terraform.tfvars` with actual values.
+
+This Infrastructure as Code setup provides a **production-ready local development environment** with GitOps capabilities for modern Kubernetes application deployment.
+
 ## 🤝 Contributing
 
 This project demonstrates production-grade DevOps practices for technical assessment purposes.

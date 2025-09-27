@@ -65,3 +65,23 @@ coverage/
 # Temporary files
 tmp/
 temp/
+
+# Terraform
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfplan
+.terraform/
+
+# Kubernetes configs (may contain sensitive data)
+kubeconfig
+*-config
+*.kubeconfig
+
+# Infrastructure secrets and runtime files
+infrastructure/terraform/kubeconfig
+infrastructure/terraform/*-config
+infrastructure/terraform/*.tfstate*
+infrastructure/terraform/*.tfvars
+infrastructure/terraform/*.tfplan
+infrastructure/terraform/.terraform/

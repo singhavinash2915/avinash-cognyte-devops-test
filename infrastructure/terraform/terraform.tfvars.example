@@ -1,0 +1,22 @@
+# Terraform Variables Example File
+# Copy this file to terraform.tfvars and modify values as needed
+
+# Cluster configuration
+cluster_name        = "currency-converter"
+kubernetes_version  = "1.29.0"
+
+# Feature toggles
+argocd_enabled      = true
+metrics_enabled     = true
+
+# Namespace configuration
+namespace          = "currency-converter"
+argocd_namespace   = "argocd"
+
+# Example custom configuration:
+# cluster_name        = "my-custom-cluster"
+# kubernetes_version  = "1.28.0"
+# argocd_enabled      = false
+# metrics_enabled     = false
+# namespace          = "my-app"
+# argocd_namespace   = "gitops"
