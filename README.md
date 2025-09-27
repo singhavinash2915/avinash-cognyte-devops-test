@@ -2,6 +2,8 @@
 
 A full-stack currency converter application demonstrating modern DevOps practices including containerization, Kubernetes deployment, Infrastructure as Code (IaC), GitOps, and CI/CD automation.
 
+![Currency Converter Application](currency-converter.png)
+
 ## 📋 Table of Contents
 
 - [Prerequisites](#prerequisites)
@@ -454,6 +456,12 @@ curl http://127.0.0.1:8090/api/info
 ```
 
 ## 💻 Using the Application
+
+### Application Screenshot
+
+![Currency Converter UI](currency-converter.png)
+
+*The Currency Converter features a clean, modern interface with real-time currency conversion between USD, EUR, GBP, and JPY.*
 
 ### Accessing the UI
 
