@@ -9,9 +9,9 @@ app:
 
 # Container image configuration
 image:
-  repository: currency-converter
+  repository: ghcr.io/singhavinash2915/currency-converter
   pullPolicy: IfNotPresent
-  tag: "latest"
+  tag: "main-8"
 
 # Image pull secrets (for private registries)
 imagePullSecrets: []
